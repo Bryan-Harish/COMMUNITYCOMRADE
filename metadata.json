@@ -1,0 +1,6 @@
+{
+  "name": "CommunityComrade",
+  "description": "AI-Powered Community Governance & Civic Engagement Platform",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
