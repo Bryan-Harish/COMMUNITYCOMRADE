@@ -790,11 +790,21 @@ export default function IssueDetails({ issueNumber, onBack, role }: IssueDetails
 
   const isAssignedOfficer = issue?.assignedOfficerId && String(issue?.assignedOfficerId) === String(getSession().user?.id);
   const currentUser = getSession().user;
+  
+  const cleanLocalityString = (val: string) => {
+    return String(val || '').replace(/\s+/g, '').toLowerCase().trim();
+  };
+
   const isSameLocality = currentUser 
-    ? (String(currentUser.registeredWard || '').trim().toLowerCase() === String(issue?.reporterWard || '').trim().toLowerCase() && 
-       String(currentUser.registeredDistrict || '').trim().toLowerCase() === String(issue?.reporterDistrict || '').trim().toLowerCase() &&
-       String(currentUser.registeredState || '').trim().toLowerCase() === String(issue?.reporterState || '').trim().toLowerCase())
+    ? (cleanLocalityString(currentUser.registeredWard) === cleanLocalityString(issue?.reporterWard) && 
+       cleanLocalityString(currentUser.registeredDistrict) === cleanLocalityString(issue?.reporterDistrict) &&
+       cleanLocalityString(currentUser.registeredState) === cleanLocalityString(issue?.reporterState))
     : false;
+
+  const formatWard = (w: string) => {
+    if (!w) return 'N/A';
+    return w.toLowerCase().startsWith('ward') ? w : `Ward ${w}`;
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12 px-4 sm:px-6">
@@ -1344,7 +1354,7 @@ export default function IssueDetails({ issueNumber, onBack, role }: IssueDetails
                       <div>
                         <p className="text-xs font-bold text-amber-800">Read-Only Access</p>
                         <p className="text-xs text-amber-700 leading-relaxed mt-1">
-                          You are viewing this complaint as an out-of-jurisdiction citizen (Ward {currentUser?.registeredWard || 'N/A'}, {currentUser?.registeredDistrict || 'N/A'}, {currentUser?.registeredState || 'N/A'}). Voting and verification are restricted to verified residents of <strong>Ward {issue?.reporterWard || 'N/A'}, {issue?.reporterDistrict || 'N/A'}, {issue?.reporterState || 'N/A'}</strong>.
+                          You are viewing this complaint as an out-of-jurisdiction citizen ({formatWard(currentUser?.registeredWard || '')}, {currentUser?.registeredDistrict || 'N/A'}, {currentUser?.registeredState || 'N/A'}). Voting and verification are restricted to verified residents of <strong>{formatWard(issue?.reporterWard || '')}, {issue?.reporterDistrict || 'N/A'}, {issue?.reporterState || 'N/A'}</strong>.
                         </p>
                       </div>
                     </div>

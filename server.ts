@@ -2415,9 +2415,10 @@ app.post('/api/issues/:issueNumber/verify', authenticateToken, async (req: any, 
     }
 
     if (req.user.role === 'CITIZEN') {
-      const sameLocality = (voterUser.registeredWard === issue.reporterWard) &&
-                           (voterUser.registeredDistrict === issue.reporterDistrict) &&
-                           (String(voterUser.registeredState || '').toLowerCase().trim() === String(issue.reporterState || '').toLowerCase().trim());
+      const cleanLoc = (s: string) => String(s || '').replace(/\s+/g, '').toLowerCase();
+      const sameLocality = cleanLoc(voterUser.registeredWard) === cleanLoc(issue.reporterWard) &&
+                           cleanLoc(voterUser.registeredDistrict) === cleanLoc(issue.reporterDistrict) &&
+                           cleanLoc(voterUser.registeredState) === cleanLoc(issue.reporterState);
       if (!sameLocality) {
         return res.status(403).json({
           success: false,
