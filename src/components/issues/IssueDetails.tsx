@@ -1339,16 +1339,22 @@ export default function IssueDetails({ issueNumber, onBack, role }: IssueDetails
                     <div className="bg-slate-50 text-slate-500 text-xs p-4 rounded-xl italic text-center border border-slate-200">
                       Administrative oversight active. Awaiting citizen voting verification...
                     </div>
+                  ) : role === 'DEPARTMENT_OFFICER' ? (
+                    String(issue.assignedOfficerId) === String(getSession().user?.id) ? (
+                      <div className="bg-slate-50 text-slate-500 text-xs p-4 rounded-xl italic text-center border border-slate-200">
+                        You are the assigned department officer. Awaiting community validation votes...
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 text-slate-500 text-xs p-4 rounded-xl italic text-center border border-slate-200">
+                        Officer oversight active. Resolution verification is restricted to verified local citizens of <strong>{formatWard(issue?.reporterWard || '')}, {issue?.reporterDistrict || 'N/A'}, {issue?.reporterState || 'N/A'}</strong>.
+                      </div>
+                    )
                   ) : hasVoted ? (
                     <div className="bg-emerald-50 text-emerald-800 text-xs p-4 rounded-xl font-medium flex items-center gap-2 border border-emerald-100">
                       <Check className="w-4 h-4 shrink-0" />
                       <span>✓ You have successfully cast your verification vote on this issue! Thank you for participating in civic oversight.</span>
                     </div>
-                  ) : String(issue.assignedOfficerId) === String(getSession().user?.id) ? (
-                    <div className="bg-slate-50 text-slate-500 text-xs p-4 rounded-xl italic text-center border border-slate-200">
-                      You are the assigned department officer. Awaiting community validation votes...
-                    </div>
-                  ) : (role === 'CITIZEN' && !isSameLocality) ? (
+                  ) : !isSameLocality ? (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
                       <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                       <div>

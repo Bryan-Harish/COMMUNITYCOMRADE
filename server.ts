@@ -2381,19 +2381,11 @@ app.post('/api/issues/:issueNumber/verify', authenticateToken, async (req: any, 
       });
     }
 
-    // A citizen cannot vote on their own assigned issue (if they are an officer)
-    if (issue.assignedOfficerId && String(issue.assignedOfficerId) === String(req.user.userId)) {
-      return res.status(400).json({
+    // Only citizens can vote on resolution verification (officers and administrators are excluded)
+    if (req.user.role !== 'CITIZEN') {
+      return res.status(403).json({
         success: false,
-        error: { code: 'FORBIDDEN_VOTE', message: 'Assigned officers cannot vote to verify their own resolutions.' }
-      });
-    }
-
-    // Administrators cannot vote on resolution verification
-    if (req.user.role === 'ADMIN') {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'FORBIDDEN_VOTE', message: 'Administrators cannot vote to verify resolutions.' }
+        error: { code: 'FORBIDDEN_VOTE', message: 'Only verified local citizens can vote to verify resolutions.' }
       });
     }
 
@@ -2414,17 +2406,15 @@ app.post('/api/issues/:issueNumber/verify', authenticateToken, async (req: any, 
       });
     }
 
-    if (req.user.role === 'CITIZEN') {
-      const cleanLoc = (s: string) => String(s || '').replace(/\s+/g, '').toLowerCase();
-      const sameLocality = cleanLoc(voterUser.registeredWard) === cleanLoc(issue.reporterWard) &&
-                           cleanLoc(voterUser.registeredDistrict) === cleanLoc(issue.reporterDistrict) &&
-                           cleanLoc(voterUser.registeredState) === cleanLoc(issue.reporterState);
-      if (!sameLocality) {
-        return res.status(403).json({
-          success: false,
-          error: { code: 'ACCESS_DENIED', message: 'Access Denied: Participation is restricted to citizens of the same locality.' }
-        });
-      }
+    const cleanLoc = (s: string) => String(s || '').replace(/\s+/g, '').toLowerCase();
+    const sameLocality = cleanLoc(voterUser.registeredWard) === cleanLoc(issue.reporterWard) &&
+                         cleanLoc(voterUser.registeredDistrict) === cleanLoc(issue.reporterDistrict) &&
+                         cleanLoc(voterUser.registeredState) === cleanLoc(issue.reporterState);
+    if (!sameLocality) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'ACCESS_DENIED', message: 'Access Denied: Participation is restricted to citizens of the same locality.' }
+      });
     }
 
     const voterName = voterUser ? `${voterUser.firstName} ${voterUser.lastName}` : 'Anonymous Citizen';
