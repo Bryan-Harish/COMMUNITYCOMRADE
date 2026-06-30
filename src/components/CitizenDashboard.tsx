@@ -707,7 +707,7 @@ export default function CitizenDashboard({
                     </div>
                     <div>
                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Leaderboard Score</span>
-                      <span className="text-sm font-semibold text-amber-600 font-mono">{user.leaderboardScore} ranking</span>
+                      <span className="text-sm font-semibold text-amber-600 font-mono">{user.leaderboardScore} points</span>
                     </div>
                   </div>
 
