@@ -789,6 +789,12 @@ export default function IssueDetails({ issueNumber, onBack, role }: IssueDetails
   });
 
   const isAssignedOfficer = issue?.assignedOfficerId && String(issue?.assignedOfficerId) === String(getSession().user?.id);
+  const currentUser = getSession().user;
+  const isSameLocality = currentUser 
+    ? (String(currentUser.registeredWard || '').trim().toLowerCase() === String(issue?.reporterWard || '').trim().toLowerCase() && 
+       String(currentUser.registeredDistrict || '').trim().toLowerCase() === String(issue?.reporterDistrict || '').trim().toLowerCase() &&
+       String(currentUser.registeredState || '').trim().toLowerCase() === String(issue?.reporterState || '').trim().toLowerCase())
+    : false;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12 px-4 sm:px-6">
@@ -887,20 +893,32 @@ export default function IssueDetails({ issueNumber, onBack, role }: IssueDetails
             if (role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer) {
               return;
             }
+            if (role === 'CITIZEN' && !isSameLocality) {
+              return;
+            }
             setActiveTab('discussion');
           }}
-          disabled={role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer}
+          disabled={
+            (role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer) ||
+            (role === 'CITIZEN' && !isSameLocality)
+          }
           className={`pb-3 text-sm font-semibold transition-all relative flex items-center gap-2 cursor-pointer ${
-            role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer
+            (role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer) || (role === 'CITIZEN' && !isSameLocality)
               ? 'text-slate-300 cursor-not-allowed opacity-60'
               : activeTab === 'discussion'
               ? 'text-teal-600 font-bold border-b-2 border-teal-600'
               : 'text-slate-500 hover:text-slate-800'
           }`}
-          title={role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer ? "Discussion is restricted to the assigned officer only" : ""}
+          title={
+            role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer 
+              ? "Discussion is restricted to the assigned officer only" 
+              : role === 'CITIZEN' && !isSameLocality
+              ? "Discussion is restricted to verified residents of the same locality"
+              : ""
+          }
         >
           Community Discussion Forum
-          {role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer && <Lock className="w-3.5 h-3.5 text-slate-400" />}
+          {((role === 'DEPARTMENT_OFFICER' && !isAssignedOfficer) || (role === 'CITIZEN' && !isSameLocality)) && <Lock className="w-3.5 h-3.5 text-slate-400" />}
         </button>
       </div>
 
@@ -1319,6 +1337,16 @@ export default function IssueDetails({ issueNumber, onBack, role }: IssueDetails
                   ) : String(issue.assignedOfficerId) === String(getSession().user?.id) ? (
                     <div className="bg-slate-50 text-slate-500 text-xs p-4 rounded-xl italic text-center border border-slate-200">
                       You are the assigned department officer. Awaiting community validation votes...
+                    </div>
+                  ) : (role === 'CITIZEN' && !isSameLocality) ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-amber-800">Read-Only Access</p>
+                        <p className="text-xs text-amber-700 leading-relaxed mt-1">
+                          You are viewing this complaint as an out-of-jurisdiction citizen (Ward {currentUser?.registeredWard || 'N/A'}, {currentUser?.registeredDistrict || 'N/A'}, {currentUser?.registeredState || 'N/A'}). Voting and verification are restricted to verified residents of <strong>Ward {issue?.reporterWard || 'N/A'}, {issue?.reporterDistrict || 'N/A'}, {issue?.reporterState || 'N/A'}</strong>.
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-4">

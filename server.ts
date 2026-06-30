@@ -2407,6 +2407,25 @@ app.post('/api/issues/:issueNumber/verify', authenticateToken, async (req: any, 
     }
 
     const voterUser = await DbService.getUserById(req.user.userId);
+    if (!voterUser) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found.' }
+      });
+    }
+
+    if (req.user.role === 'CITIZEN') {
+      const sameLocality = (voterUser.registeredWard === issue.reporterWard) &&
+                           (voterUser.registeredDistrict === issue.reporterDistrict) &&
+                           (String(voterUser.registeredState || '').toLowerCase().trim() === String(issue.reporterState || '').toLowerCase().trim());
+      if (!sameLocality) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'ACCESS_DENIED', message: 'Access Denied: Participation is restricted to citizens of the same locality.' }
+        });
+      }
+    }
+
     const voterName = voterUser ? `${voterUser.firstName} ${voterUser.lastName}` : 'Anonymous Citizen';
 
     // Save Resolution Verification Vote
