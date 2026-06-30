@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Upload, Video, Image, FileText, Check, AlertTriangle, ShieldCheck, RefreshCw, X } from 'lucide-react';
 import { getAuthHeaders } from '../../utils/auth.js';
 import MapCoordinatePicker from './MapCoordinatePicker.js';
+import { 
+  isValidIssueTitle, 
+  isValidIssueDescription, 
+  sanitizeText 
+} from '../../utils/validation.js';
 
 interface NewIssueFormProps {
   onBack: () => void;
@@ -100,24 +105,65 @@ export default function NewIssueForm({ onBack, onSuccess, citizenUser }: NewIssu
       return;
     }
 
+    const optionsHigh = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
+    const optionsLow = { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 };
+
+    const successCallback = (position: GeolocationPosition) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      setLatitude(lat);
+      setLongitude(lng);
+      setAddress(`GPS Location Coords (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
+      setGpsLoading(false);
+    };
+
+    const tryIPGeolocation = async () => {
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.latitude && data.longitude) {
+            setLatitude(Number(data.latitude));
+            setLongitude(Number(data.longitude));
+            setAddress(`IP-Based Location, ${data.city || 'Local Area'}`);
+            setGpsLoading(false);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn("IP Geolocation fallback 1 failed:", err);
+      }
+      return false;
+    };
+
+    const handleFinalGPSError = async (err: any) => {
+      console.warn("Final HTML5 Geolocation failed in NewIssueForm. Trying network backup...");
+      const ipSuccess = await tryIPGeolocation();
+      if (ipSuccess) return;
+
+      // Safe user registered coordinates fallback
+      console.warn("All GPS & Network fetches failed. Using register preset fallback.");
+      setLatitude(citizenUser.latitude);
+      setLongitude(citizenUser.longitude);
+      setAddress(citizenUser.registeredAreaName ? `${citizenUser.registeredAreaName}, Ward ${citizenUser.registeredWard}, ${citizenUser.registeredDistrict}` : 'GPS Offline Fallback');
+      setGpsLoading(false);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        setLatitude(lat);
-        setLongitude(lng);
-        setAddress(`GPS Location Coords (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
-        setGpsLoading(false);
-      },
+      successCallback,
       (error) => {
-        console.warn("GPS lookup failed, using register preset fallback:", error);
-        // Load citizen's registered coordinates
-        setLatitude(citizenUser.latitude);
-        setLongitude(citizenUser.longitude);
-        setAddress(citizenUser.registeredAreaName ? `${citizenUser.registeredAreaName}, Ward ${citizenUser.registeredWard}, ${citizenUser.registeredDistrict}` : 'GPS Offline Fallback');
-        setGpsLoading(false);
+        console.warn("NewIssueForm GPS lookup (high accuracy) failed:", error.message, "code:", error.code);
+        if (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE) {
+          navigator.geolocation.getCurrentPosition(
+            successCallback,
+            handleFinalGPSError,
+            optionsLow
+          );
+        } else {
+          handleFinalGPSError(error);
+        }
       },
-      { enableHighAccuracy: true, timeout: 5000 }
+      optionsHigh
     );
   };
 
@@ -232,14 +278,19 @@ export default function NewIssueForm({ onBack, onSuccess, citizenUser }: NewIssu
     e.preventDefault();
     setErrorMessage(null);
 
-    // Front-end sanity bounds validation
-    if (title.trim().length < 10 || title.trim().length > 100) {
-      setErrorMessage("Complaint Title must be between 10 and 100 characters long.");
+    // 1. Sanitize text inputs
+    const cleanTitle = sanitizeText(title);
+    const cleanDescription = sanitizeText(description);
+    const cleanAddress = sanitizeText(address);
+
+    // 2. Perform validations
+    if (!isValidIssueTitle(cleanTitle)) {
+      setErrorMessage("Complaint Title must be between 5 and 150 characters long.");
       return;
     }
 
-    if (description.trim().length < 20 || description.trim().length > 1000) {
-      setErrorMessage("Incident Description must be between 20 and 1000 characters long.");
+    if (!isValidIssueDescription(cleanDescription)) {
+      setErrorMessage("Incident Description must be between 20 and 3000 characters long.");
       return;
     }
 
@@ -248,7 +299,7 @@ export default function NewIssueForm({ onBack, onSuccess, citizenUser }: NewIssu
       return;
     }
 
-    if (address.trim().length === 0) {
+    if (cleanAddress.trim().length === 0) {
       setErrorMessage("Municipal location address is required.");
       return;
     }
@@ -270,11 +321,11 @@ export default function NewIssueForm({ onBack, onSuccess, citizenUser }: NewIssu
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
+          title: cleanTitle,
+          description: cleanDescription,
           latitude: Number(latitude),
           longitude: Number(longitude),
-          address: address.trim(),
+          address: cleanAddress,
           media: uploadedMedia.map(m => ({ url: m.url, type: m.type }))
         })
       });
@@ -590,6 +641,8 @@ export default function NewIssueForm({ onBack, onSuccess, citizenUser }: NewIssu
           defaultLat={citizenUser?.latitude || 12.9716}
           defaultLng={citizenUser?.longitude || 77.5946}
           onConfirm={handleMapConfirm}
+          title="Select Complaint Location"
+          subtitle="Pinpoint or search for the exact coordinates of the issue"
         />
       )}
     </div>

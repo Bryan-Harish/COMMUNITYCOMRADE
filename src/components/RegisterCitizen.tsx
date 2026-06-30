@@ -1,6 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { UserPlus, ArrowLeft, Loader2, Upload, FileCheck, CheckCircle2, MapPin } from 'lucide-react';
 import MapCoordinatePicker from './issues/MapCoordinatePicker.js';
+import { 
+  isValidName, 
+  isValidPhone, 
+  isValidEmail, 
+  isValidGovernmentId, 
+  sanitizeText 
+} from '../utils/validation.js';
 
 interface RegisterCitizenProps {
   onNavigate: (path: string) => void;
@@ -127,14 +134,56 @@ export default function RegisterCitizen({ onNavigate }: RegisterCitizenProps) {
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    // 1. Sanitize text inputs
+    const cleanFirstName = sanitizeText(firstName);
+    const cleanLastName = sanitizeText(lastName);
+    const cleanEmail = sanitizeText(email);
+    const cleanPhone = phoneNumber.replace(/\s+/g, ''); // strip spaces
+    const cleanGovIdNumber = sanitizeText(governmentIdNumber);
+    const cleanAreaName = sanitizeText(registeredAreaName);
+    const cleanWard = sanitizeText(registeredWard);
+    const cleanDistrict = sanitizeText(registeredDistrict);
+    const cleanState = sanitizeText(registeredState);
+
+    // 2. Perform validations
+    if (!isValidName(cleanFirstName)) {
+      setErrorMsg('Please enter a valid first name (2-100 characters, alphabets, spaces, periods, and hyphens only).');
+      return;
+    }
+
+    if (!isValidName(cleanLastName)) {
+      setErrorMsg('Please enter a valid last name (2-100 characters, alphabets, spaces, periods, and hyphens only).');
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+
+    if (!isValidPhone(cleanPhone)) {
+      setErrorMsg('Phone number must contain exactly 10 digits.');
+      return;
+    }
+
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
       setErrorMsg('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.');
       return;
     }
 
+    if (!isValidGovernmentId(cleanGovIdNumber)) {
+      setErrorMsg('Please enter a valid Government ID Number (alphanumeric, spaces, and hyphens only, no special character spam).');
+      return;
+    }
+
     if (!governmentIdImageUrl) {
       setErrorMsg('Please upload a Government ID Image file.');
+      return;
+    }
+
+    if (!cleanAreaName || !cleanWard || !cleanDistrict || !cleanState) {
+      setErrorMsg('All area, ward, district, and state sector fields are required.');
       return;
     }
 
@@ -145,18 +194,18 @@ export default function RegisterCitizen({ onNavigate }: RegisterCitizenProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
+          firstName: cleanFirstName,
+          lastName: cleanLastName,
+          email: cleanEmail,
           password,
-          phoneNumber,
+          phoneNumber: cleanPhone,
           governmentIdType,
-          governmentIdNumber,
+          governmentIdNumber: cleanGovIdNumber,
           governmentIdImageUrl,
-          registeredAreaName,
-          registeredWard,
-          registeredDistrict,
-          registeredState,
+          registeredAreaName: cleanAreaName,
+          registeredWard: cleanWard,
+          registeredDistrict: cleanDistrict,
+          registeredState: cleanState,
           latitude,
           longitude
         })
@@ -593,6 +642,8 @@ export default function RegisterCitizen({ onNavigate }: RegisterCitizenProps) {
           defaultLat={12.9716}
           defaultLng={77.5946}
           onConfirm={handleMapConfirm}
+          title="Select Residence Location"
+          subtitle="Pinpoint or search for your residential coordinates"
         />
       )}
     </div>

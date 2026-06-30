@@ -16,6 +16,7 @@ import {
 import { GamificationEngine } from './gamification';
 import { isUsingMongo } from '../db/db';
 import { generateQuizQuestions } from './ai/quizGenerator';
+import { sanitizeText, isValidQuizCategoryName } from '../utils/validation.js';
 
 export const gamificationRouter = express.Router();
 
@@ -148,7 +149,23 @@ gamificationRouter.get('/profile', async (req: any, res: any) => {
 gamificationRouter.post('/admin/categories', async (req: any, res: any) => {
   if (req.user.role !== 'ADMIN') return res.status(403).json({ success: false });
   try {
-    const category = new QuizCategoryModel(req.body);
+    const { name, description, difficulty, xpReward, isEmergencyOnly, isActive } = req.body;
+
+    const cleanName = sanitizeText(name);
+    const cleanDescription = sanitizeText(description);
+
+    if (!cleanName || !isValidQuizCategoryName(cleanName)) {
+      return res.status(400).json({ success: false, error: 'Category Name is required and must be under 100 characters.' });
+    }
+
+    const category = new QuizCategoryModel({
+      name: cleanName,
+      description: cleanDescription,
+      difficulty: difficulty || 'MEDIUM',
+      xpReward: Number(xpReward) || 50,
+      isEmergencyOnly: !!isEmergencyOnly,
+      isActive: isActive !== undefined ? !!isActive : true,
+    });
     await category.save();
 
     // Trigger AI question generation in the background

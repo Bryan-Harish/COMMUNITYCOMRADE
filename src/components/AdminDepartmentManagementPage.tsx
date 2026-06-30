@@ -5,6 +5,7 @@ import {
   RefreshCw, Power, CheckCircle
 } from 'lucide-react';
 import { getAuthHeaders } from '../utils/auth.js';
+import { isValidHelplinePhone, isValidEmail, sanitizeText } from '../utils/validation.js';
 
 interface AdminDepartmentManagementPageProps {
   user: any;
@@ -124,44 +125,66 @@ export default function AdminDepartmentManagementPage({
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    // Front-end Validations
-    if (!name.trim()) {
+    // 1. Sanitize text inputs
+    const cleanName = sanitizeText(name);
+    const cleanDescription = sanitizeText(description);
+    const cleanPrimaryHelpline = sanitizeText(primaryHelpline).replace(/\s+/g, ''); // strip spacing
+    const cleanEscalationHelpline = sanitizeText(escalationHelpline).replace(/\s+/g, '');
+    const cleanOfficeAddress = sanitizeText(officeAddress);
+    const cleanWorkingHours = sanitizeText(workingHours);
+    const cleanEmail = sanitizeText(email);
+    const cleanWebsite = sanitizeText(website);
+
+    // 2. Front-end Validations
+    if (!cleanName) {
       setErrorMsg('Department Name is required.');
       return;
     }
-    if (!description.trim()) {
+    if (!cleanDescription) {
       setErrorMsg('Description is required.');
       return;
     }
-    if (!primaryHelpline.trim()) {
+    if (!cleanPrimaryHelpline) {
       setErrorMsg('Primary Helpline Number is required.');
       return;
     }
-    if (!escalationHelpline.trim()) {
+    if (!isValidHelplinePhone(cleanPrimaryHelpline)) {
+      setErrorMsg('Primary Helpline Number must be digits only, with optional + prefix.');
+      return;
+    }
+    if (!cleanEscalationHelpline) {
       setErrorMsg('Escalation Helpline Number is required.');
       return;
     }
-    if (!officeAddress.trim()) {
+    if (!isValidHelplinePhone(cleanEscalationHelpline)) {
+      setErrorMsg('Escalation Helpline Number must be digits only, with optional + prefix.');
+      return;
+    }
+    if (!cleanOfficeAddress) {
       setErrorMsg('Office Address is required.');
       return;
     }
-    if (!workingHours.trim()) {
+    if (!cleanWorkingHours) {
       setErrorMsg('Working Hours are required.');
+      return;
+    }
+    if (cleanEmail && !isValidEmail(cleanEmail)) {
+      setErrorMsg('Please enter a valid email address.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       const bodyPayload = {
-        name: name.trim(),
-        description: description.trim(),
+        name: cleanName,
+        description: cleanDescription,
         associatedCategories,
-        primaryHelpline: primaryHelpline.trim(),
-        escalationHelpline: escalationHelpline.trim(),
-        officeAddress: officeAddress.trim(),
-        workingHours: workingHours.trim(),
-        email: email.trim() || undefined,
-        website: website.trim() || undefined,
+        primaryHelpline: cleanPrimaryHelpline,
+        escalationHelpline: cleanEscalationHelpline,
+        officeAddress: cleanOfficeAddress,
+        workingHours: cleanWorkingHours,
+        email: cleanEmail || undefined,
+        website: cleanWebsite || undefined,
         isEmergencyDepartment,
         status
       };

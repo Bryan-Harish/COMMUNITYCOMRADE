@@ -488,7 +488,8 @@ export default function AdminDashboard({
                   type="text"
                   placeholder="Search by name, email, or role..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value.slice(0, 100))}
+                  maxLength={100}
                   className="block w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-slate-800"
                 />
               </div>

@@ -12,6 +12,18 @@ import { validateResolution, generateDiscussionSummary } from './src/services/ai
 import { generateAIPredictiveInsights } from './src/services/ai/insights.js';
 import { gamificationRouter } from './src/services/gamificationRouter.js';
 import { GamificationEngine } from './src/services/gamification.js';
+import { 
+  isValidName, 
+  isValidPhone, 
+  isValidEmail, 
+  isValidGovernmentId, 
+  isValidIssueTitle, 
+  isValidIssueDescription, 
+  isValidComment, 
+  isValidQuizCategoryName, 
+  isValidHelplinePhone, 
+  sanitizeText 
+} from './src/utils/validation.js';
 
 dotenv.config();
 
@@ -80,16 +92,56 @@ app.post('/api/auth/register/citizen', async (req: any, res: any) => {
       longitude
     } = req.body;
 
-    // Validation
+    // 1. Sanitize text fields
+    const cleanFirstName = sanitizeText(firstName);
+    const cleanLastName = sanitizeText(lastName);
+    const cleanEmail = sanitizeText(email).toLowerCase();
+    const cleanPhoneNumber = sanitizeText(phoneNumber).replace(/\D/g, ''); // retain digits only
+    const cleanGovIdType = sanitizeText(governmentIdType);
+    const cleanGovIdNumber = sanitizeText(governmentIdNumber).replace(/[^a-zA-Z0-9]/g, ''); // alphanumeric
+    const cleanAreaName = sanitizeText(registeredAreaName);
+    const cleanWard = sanitizeText(registeredWard);
+    const cleanDistrict = sanitizeText(registeredDistrict);
+    const cleanState = sanitizeText(registeredState);
+
+    // 2. Validation Checks
     if (
-      !firstName || !lastName || !email || !password || !phoneNumber ||
-      !governmentIdType || !governmentIdNumber || !governmentIdImageUrl ||
-      !registeredAreaName || !registeredWard || !registeredDistrict || !registeredState ||
+      !cleanFirstName || !cleanLastName || !cleanEmail || !password || !cleanPhoneNumber ||
+      !cleanGovIdType || !cleanGovIdNumber || !governmentIdImageUrl ||
+      !cleanAreaName || !cleanWard || !cleanDistrict || !cleanState ||
       latitude === undefined || longitude === undefined
     ) {
       return res.status(400).json({
         success: false,
         error: { code: 'MISSING_FIELDS', message: 'All registration fields are required.' }
+      });
+    }
+
+    if (!isValidName(cleanFirstName) || !isValidName(cleanLastName)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_NAME', message: 'Name must be 2-100 characters and contain only alphabets, spaces, periods, or hyphens.' }
+      });
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please provide a valid email address.' }
+      });
+    }
+
+    if (!isValidPhone(cleanPhoneNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PHONE', message: 'Phone number must be exactly 10 digits.' }
+      });
+    }
+
+    if (!isValidGovernmentId(cleanGovIdNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_GOVERNMENT_ID', message: 'Government ID must be alphanumeric and between 5 and 30 characters.' }
       });
     }
 
@@ -102,7 +154,7 @@ app.post('/api/auth/register/citizen', async (req: any, res: any) => {
     }
 
     // Email unique check
-    const existingUser = await DbService.getUserByEmail(email);
+    const existingUser = await DbService.getUserByEmail(cleanEmail);
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -111,7 +163,7 @@ app.post('/api/auth/register/citizen', async (req: any, res: any) => {
     }
 
     // Phone unique check
-    const existingPhone = await DbService.getUserByPhone(phoneNumber);
+    const existingPhone = await DbService.getUserByPhone(cleanPhoneNumber);
     if (existingPhone) {
       return res.status(409).json({
         success: false,
@@ -120,11 +172,11 @@ app.post('/api/auth/register/citizen', async (req: any, res: any) => {
     }
 
     // Government ID unique check
-    const existingCitizenProfile = await DbService.getCitizenByGovernmentId(governmentIdNumber);
+    const existingCitizenProfile = await DbService.getCitizenByGovernmentId(cleanGovIdNumber);
     if (existingCitizenProfile) {
       return res.status(409).json({
         success: false,
-        error: { code: 'GOVERNMENT_ID_EXISTS', message: `A citizen is already registered with this ${governmentIdType} ID number.` }
+        error: { code: 'GOVERNMENT_ID_EXISTS', message: `A citizen is already registered with this ${cleanGovIdType} ID number.` }
       });
     }
 
@@ -133,28 +185,28 @@ app.post('/api/auth/register/citizen', async (req: any, res: any) => {
 
     // Prepare User Record
     const userRecord = {
-      firstName,
-      lastName,
-      email: email.toLowerCase(),
+      firstName: cleanFirstName,
+      lastName: cleanLastName,
+      email: cleanEmail,
       passwordHash,
-      phoneNumber,
+      phoneNumber: cleanPhoneNumber,
       role: 'CITIZEN',
       status: 'PENDING_ADMIN_REVIEW', // Awaiting administrative review flow
       registrationStatus: 'PENDING_ADMIN_REVIEW',
       isVerifiedCitizen: false,
       verifiedBadge: false,
-      registeredAreaName,
-      registeredWard,
-      registeredDistrict,
-      registeredState,
+      registeredAreaName: cleanAreaName,
+      registeredWard: cleanWard,
+      registeredDistrict: cleanDistrict,
+      registeredState: cleanState,
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
     };
 
     // Prepare Profile Record
     const profileRecord = {
-      governmentIdType,
-      governmentIdNumber,
+      governmentIdType: cleanGovIdType,
+      governmentIdNumber: cleanGovIdNumber,
       governmentIdImageUrl,
     };
 
@@ -197,15 +249,54 @@ app.post('/api/auth/register/officer', async (req: any, res: any) => {
       assignedState
     } = req.body;
 
-    // Validation
+    // 1. Sanitize text fields
+    const cleanFirstName = sanitizeText(firstName);
+    const cleanLastName = sanitizeText(lastName);
+    const cleanEmail = sanitizeText(email).toLowerCase();
+    const cleanPhoneNumber = sanitizeText(phoneNumber).replace(/\D/g, ''); // digits only
+    const cleanEmployeeId = sanitizeText(employeeId).toUpperCase();
+    const cleanDeptName = sanitizeText(departmentName);
+    const cleanAssignedWard = sanitizeText(assignedWard);
+    const cleanAssignedDistrict = sanitizeText(assignedDistrict);
+    const cleanAssignedState = sanitizeText(assignedState);
+
+    // 2. Validation Checks
     if (
-      !firstName || !lastName || !email || !password || !phoneNumber ||
-      !employeeId || !departmentName || !departmentIdCardImageUrl ||
-      !assignedWard || !assignedDistrict || !assignedState
+      !cleanFirstName || !cleanLastName || !cleanEmail || !password || !cleanPhoneNumber ||
+      !cleanEmployeeId || !cleanDeptName || !departmentIdCardImageUrl ||
+      !cleanAssignedWard || !cleanAssignedDistrict || !cleanAssignedState
     ) {
       return res.status(400).json({
         success: false,
         error: { code: 'MISSING_FIELDS', message: 'All officer registration fields are required.' }
+      });
+    }
+
+    if (!isValidName(cleanFirstName) || !isValidName(cleanLastName)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_NAME', message: 'Name must be 2-100 characters and contain only alphabets, spaces, periods, or hyphens.' }
+      });
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_EMAIL', message: 'Please provide a valid email address.' }
+      });
+    }
+
+    if (!isValidPhone(cleanPhoneNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PHONE', message: 'Phone number must be exactly 10 digits.' }
+      });
+    }
+
+    if (!cleanEmployeeId || cleanEmployeeId.length < 3 || cleanEmployeeId.length > 50) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_EMPLOYEE_ID', message: 'Employee ID is required and must be between 3 and 50 characters.' }
       });
     }
 
@@ -218,7 +309,7 @@ app.post('/api/auth/register/officer', async (req: any, res: any) => {
     }
 
     // Email check
-    const existingUser = await DbService.getUserByEmail(email);
+    const existingUser = await DbService.getUserByEmail(cleanEmail);
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -227,7 +318,7 @@ app.post('/api/auth/register/officer', async (req: any, res: any) => {
     }
 
     // Phone check
-    const existingPhone = await DbService.getUserByPhone(phoneNumber);
+    const existingPhone = await DbService.getUserByPhone(cleanPhoneNumber);
     if (existingPhone) {
       return res.status(409).json({
         success: false,
@@ -236,7 +327,7 @@ app.post('/api/auth/register/officer', async (req: any, res: any) => {
     }
 
     // Employee ID unique check
-    const existingOfficer = await DbService.getOfficerByEmployeeId(employeeId);
+    const existingOfficer = await DbService.getOfficerByEmployeeId(cleanEmployeeId);
     if (existingOfficer) {
       return res.status(409).json({
         success: false,
@@ -249,28 +340,28 @@ app.post('/api/auth/register/officer', async (req: any, res: any) => {
 
     // Prepare records
     const userRecord = {
-      firstName,
-      lastName,
-      email: email.toLowerCase(),
+      firstName: cleanFirstName,
+      lastName: cleanLastName,
+      email: cleanEmail,
       passwordHash,
-      phoneNumber,
+      phoneNumber: cleanPhoneNumber,
       role: 'DEPARTMENT_OFFICER',
       status: 'PENDING_OFFICER_APPROVAL', // Starts pending admin review
-      registeredAreaName: assignedWard,
-      registeredWard: assignedWard,
-      registeredDistrict: assignedDistrict,
-      registeredState: assignedState,
+      registeredAreaName: cleanAssignedWard,
+      registeredWard: cleanAssignedWard,
+      registeredDistrict: cleanAssignedDistrict,
+      registeredState: cleanAssignedState,
       latitude: 12.9716, // Default fallback
       longitude: 77.5946,
     };
 
     const profileRecord = {
-      employeeId,
-      departmentName,
+      employeeId: cleanEmployeeId,
+      departmentName: cleanDeptName,
       departmentIdCardImageUrl,
-      assignedWard,
-      assignedDistrict,
-      assignedState
+      assignedWard: cleanAssignedWard,
+      assignedDistrict: cleanAssignedDistrict,
+      assignedState: cleanAssignedState
     };
 
     const newUser = await DbService.createOfficer(userRecord, profileRecord);
@@ -1134,6 +1225,14 @@ app.post('/api/issues/:issueId/discussion/messages', authenticateToken, async (r
     const { issueId } = req.params;
     const { message, messageType, imageUrls } = req.body;
 
+    // 1. Sanitize text
+    const cleanMessage = sanitizeText(message);
+
+    // 2. Perform validations
+    if (!cleanMessage || typeof cleanMessage !== 'string' || cleanMessage.length < 2 || cleanMessage.length > 1500) {
+      return res.status(400).json({ error: 'Message must be a string between 2 and 1500 characters long.' });
+    }
+
     let issue = await DbService.getIssueByNumber(issueId);
     if (!issue) {
       issue = await DbService.getIssueById(issueId);
@@ -1177,7 +1276,7 @@ app.post('/api/issues/:issueId/discussion/messages', authenticateToken, async (r
       userId: user.userId,
       userRole: user.role,
       messageType: finalMessageType,
-      message,
+      message: cleanMessage,
       imageUrls: imageUrls || []
     });
 
@@ -1188,7 +1287,7 @@ app.post('/api/issues/:issueId/discussion/messages', authenticateToken, async (r
       await DbService.createIssueAudit({
         issueId: issue.issueNumber,
         eventType: 'OFFICIAL_UPDATE',
-        description: `Official Update posted by ${actorName}: ${message}`,
+        description: `Official Update posted by ${actorName}: ${cleanMessage}`,
         actorId: user.userId,
         actorRole: user.role
       });
@@ -1366,18 +1465,23 @@ app.post('/api/issues', authenticateToken, async (req: any, res: any) => {
       });
     }
 
-    // Validations
-    if (!title || typeof title !== 'string' || title.trim().length < 10 || title.trim().length > 100) {
+    // 1. Sanitize text fields
+    const cleanTitle = sanitizeText(title);
+    const cleanDescription = sanitizeText(description);
+    const cleanAddress = sanitizeText(address);
+
+    // 2. Perform Validations
+    if (!isValidIssueTitle(cleanTitle)) {
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_TITLE', message: 'Title must be between 10 and 100 characters long.' }
+        error: { code: 'INVALID_TITLE', message: 'Title must be between 5 and 150 characters long.' }
       });
     }
 
-    if (!description || typeof description !== 'string' || description.trim().length < 20 || description.trim().length > 1000) {
+    if (!isValidIssueDescription(cleanDescription)) {
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_DESCRIPTION', message: 'Description must be between 20 and 1000 characters long.' }
+        error: { code: 'INVALID_DESCRIPTION', message: 'Description must be between 20 and 3000 characters long.' }
       });
     }
 
@@ -1388,7 +1492,7 @@ app.post('/api/issues', authenticateToken, async (req: any, res: any) => {
       });
     }
 
-    if (!address || typeof address !== 'string' || address.trim().length === 0) {
+    if (!cleanAddress) {
       return res.status(400).json({
         success: false,
         error: { code: 'INVALID_ADDRESS', message: 'Address is required.' }
@@ -1442,11 +1546,11 @@ app.post('/api/issues', authenticateToken, async (req: any, res: any) => {
     
     // AI Analysis
     const aiAnalysis = await processIssueAnalysis({
-        title: title.trim(),
-        description: description.trim(),
+        title: cleanTitle,
+        description: cleanDescription,
         latitude,
         longitude,
-        address: address.trim(),
+        address: cleanAddress,
         media
     });
 
@@ -1503,8 +1607,8 @@ app.post('/api/issues', authenticateToken, async (req: any, res: any) => {
       reporterWard: user.registeredWard,
       reporterDistrict: user.registeredDistrict,
       reporterState: (user.registeredState || 'Unknown State').replace(/\s+/g, ''),
-      title: title.trim(),
-      description: description.trim(),
+      title: cleanTitle,
+      description: cleanDescription,
       category: aiAnalysis.category || 'UNCATEGORIZED',
       priority: aiAnalysis.priority || 'MEDIUM',
       department: assignedDeptName,
@@ -1514,7 +1618,7 @@ app.post('/api/issues', authenticateToken, async (req: any, res: any) => {
         type: 'Point',
         coordinates: [longitude, latitude]
       },
-      address: address.trim(),
+      address: cleanAddress,
       status: initialStatus,
       upvoteCount: 0,
       verificationCount: 0,
@@ -3288,49 +3392,67 @@ app.post('/api/helpline/admin/departments', authenticateToken, authorizeRoles('A
       status
     } = req.body;
 
-    if (!name || !name.trim()) {
+    const cleanName = sanitizeText(name);
+    const cleanDescription = sanitizeText(description);
+    const cleanPrimary = sanitizeText(primaryHelpline).replace(/\s+/g, '');
+    const cleanEscalation = sanitizeText(escalationHelpline).replace(/\s+/g, '');
+    const cleanAddress = sanitizeText(officeAddress);
+    const cleanWorkingHours = sanitizeText(workingHours);
+    const cleanEmail = sanitizeText(email).toLowerCase();
+    const cleanWebsite = sanitizeText(website);
+
+    if (!cleanName) {
       return res.status(400).json({ success: false, error: { message: 'Department Name is required.' } });
     }
-    if (!primaryHelpline || !primaryHelpline.trim()) {
+    if (!cleanPrimary) {
       return res.status(400).json({ success: false, error: { message: 'Primary Helpline is required.' } });
     }
-    if (!escalationHelpline || !escalationHelpline.trim()) {
+    if (!isValidHelplinePhone(cleanPrimary)) {
+      return res.status(400).json({ success: false, error: { message: 'Primary helpline must contain only digits, with an optional leading +.' } });
+    }
+    if (!cleanEscalation) {
       return res.status(400).json({ success: false, error: { message: 'Escalation Helpline is required.' } });
     }
-    if (!officeAddress || !officeAddress.trim()) {
+    if (!isValidHelplinePhone(cleanEscalation)) {
+      return res.status(400).json({ success: false, error: { message: 'Escalation helpline must contain only digits, with an optional leading +.' } });
+    }
+    if (!cleanAddress) {
       return res.status(400).json({ success: false, error: { message: 'Office Address is required.' } });
     }
-    if (!workingHours || !workingHours.trim()) {
+    if (!cleanWorkingHours) {
       return res.status(400).json({ success: false, error: { message: 'Working Hours are required.' } });
+    }
+    if (cleanEmail && !isValidEmail(cleanEmail)) {
+      return res.status(400).json({ success: false, error: { message: 'Please provide a valid email address.' } });
     }
 
     // Duplication Check: Name
-    const dupName = await DbService.getDepartmentDirectoryByName(name.trim());
+    const dupName = await DbService.getDepartmentDirectoryByName(cleanName);
     if (dupName) {
-      return res.status(400).json({ success: false, error: { message: `A department with name "${name.trim()}" already exists.` } });
+      return res.status(400).json({ success: false, error: { message: `A department with name "${cleanName}" already exists.` } });
     }
 
     // Duplication Check: Helplines
-    const dupPrimary = await DbService.getDepartmentDirectoryByHelpline(primaryHelpline.trim());
+    const dupPrimary = await DbService.getDepartmentDirectoryByHelpline(cleanPrimary);
     if (dupPrimary) {
-      return res.status(400).json({ success: false, error: { message: `Helpline number "${primaryHelpline.trim()}" is already assigned to ${dupPrimary.name}.` } });
+      return res.status(400).json({ success: false, error: { message: `Helpline number "${cleanPrimary}" is already assigned to ${dupPrimary.name}.` } });
     }
 
-    const dupEscalation = await DbService.getDepartmentDirectoryByHelpline(escalationHelpline.trim());
+    const dupEscalation = await DbService.getDepartmentDirectoryByHelpline(cleanEscalation);
     if (dupEscalation) {
-      return res.status(400).json({ success: false, error: { message: `Helpline number "${escalationHelpline.trim()}" is already assigned to ${dupEscalation.name}.` } });
+      return res.status(400).json({ success: false, error: { message: `Helpline number "${cleanEscalation}" is already assigned to ${dupEscalation.name}.` } });
     }
 
     const newDept = await DbService.createDepartmentDirectory({
-      name: name.trim(),
-      description: (description || '').trim(),
+      name: cleanName,
+      description: cleanDescription,
       associatedCategories: associatedCategories || [],
-      primaryHelpline: primaryHelpline.trim(),
-      escalationHelpline: escalationHelpline.trim(),
-      officeAddress: officeAddress.trim(),
-      workingHours: workingHours.trim(),
-      email: (email || '').trim(),
-      website: (website || '').trim(),
+      primaryHelpline: cleanPrimary,
+      escalationHelpline: cleanEscalation,
+      officeAddress: cleanAddress,
+      workingHours: cleanWorkingHours,
+      email: cleanEmail,
+      website: cleanWebsite,
       isEmergencyDepartment: !!isEmergencyDepartment,
       status: status || 'ACTIVE'
     });
@@ -3365,37 +3487,71 @@ app.put('/api/helpline/admin/departments/:id', authenticateToken, authorizeRoles
       return res.status(404).json({ success: false, error: { message: 'Department not found.' } });
     }
 
-    if (name && name.trim()) {
-      const dupName = await DbService.getDepartmentDirectoryByName(name.trim());
+    const cleanName = name !== undefined ? sanitizeText(name) : undefined;
+    const cleanDescription = description !== undefined ? sanitizeText(description) : undefined;
+    const cleanPrimary = primaryHelpline !== undefined ? sanitizeText(primaryHelpline).replace(/\s+/g, '') : undefined;
+    const cleanEscalation = escalationHelpline !== undefined ? sanitizeText(escalationHelpline).replace(/\s+/g, '') : undefined;
+    const cleanAddress = officeAddress !== undefined ? sanitizeText(officeAddress) : undefined;
+    const cleanWorkingHours = workingHours !== undefined ? sanitizeText(workingHours) : undefined;
+    const cleanEmail = email !== undefined ? sanitizeText(email).toLowerCase() : undefined;
+    const cleanWebsite = website !== undefined ? sanitizeText(website) : undefined;
+
+    if (cleanName !== undefined && !cleanName) {
+      return res.status(400).json({ success: false, error: { message: 'Department Name cannot be empty.' } });
+    }
+    if (cleanPrimary !== undefined && !cleanPrimary) {
+      return res.status(400).json({ success: false, error: { message: 'Primary Helpline cannot be empty.' } });
+    }
+    if (cleanPrimary !== undefined && !isValidHelplinePhone(cleanPrimary)) {
+      return res.status(400).json({ success: false, error: { message: 'Primary helpline must contain only digits, with an optional leading +.' } });
+    }
+    if (cleanEscalation !== undefined && !cleanEscalation) {
+      return res.status(400).json({ success: false, error: { message: 'Escalation Helpline cannot be empty.' } });
+    }
+    if (cleanEscalation !== undefined && !isValidHelplinePhone(cleanEscalation)) {
+      return res.status(400).json({ success: false, error: { message: 'Escalation helpline must contain only digits, with an optional leading +.' } });
+    }
+    if (cleanAddress !== undefined && !cleanAddress) {
+      return res.status(400).json({ success: false, error: { message: 'Office Address cannot be empty.' } });
+    }
+    if (cleanWorkingHours !== undefined && !cleanWorkingHours) {
+      return res.status(400).json({ success: false, error: { message: 'Working hours cannot be empty.' } });
+    }
+    if (cleanEmail && !isValidEmail(cleanEmail)) {
+      return res.status(400).json({ success: false, error: { message: 'Please provide a valid email address.' } });
+    }
+
+    if (cleanName) {
+      const dupName = await DbService.getDepartmentDirectoryByName(cleanName);
       if (dupName && String(dupName.id || dupName._id) !== String(id)) {
-        return res.status(400).json({ success: false, error: { message: `A department with name "${name.trim()}" already exists.` } });
+        return res.status(400).json({ success: false, error: { message: `A department with name "${cleanName}" already exists.` } });
       }
     }
 
-    if (primaryHelpline && primaryHelpline.trim()) {
-      const dupPrimary = await DbService.getDepartmentDirectoryByHelpline(primaryHelpline.trim());
+    if (cleanPrimary) {
+      const dupPrimary = await DbService.getDepartmentDirectoryByHelpline(cleanPrimary);
       if (dupPrimary && String(dupPrimary.id || dupPrimary._id) !== String(id)) {
-        return res.status(400).json({ success: false, error: { message: `Helpline number "${primaryHelpline.trim()}" is already assigned to ${dupPrimary.name}.` } });
+        return res.status(400).json({ success: false, error: { message: `Helpline number "${cleanPrimary}" is already assigned to ${dupPrimary.name}.` } });
       }
     }
 
-    if (escalationHelpline && escalationHelpline.trim()) {
-      const dupEscalation = await DbService.getDepartmentDirectoryByHelpline(escalationHelpline.trim());
+    if (cleanEscalation) {
+      const dupEscalation = await DbService.getDepartmentDirectoryByHelpline(cleanEscalation);
       if (dupEscalation && String(dupEscalation.id || dupEscalation._id) !== String(id)) {
-        return res.status(400).json({ success: false, error: { message: `Helpline number "${escalationHelpline.trim()}" is already assigned to ${dupEscalation.name}.` } });
+        return res.status(400).json({ success: false, error: { message: `Helpline number "${cleanEscalation}" is already assigned to ${dupEscalation.name}.` } });
       }
     }
 
     const updatedFields: any = {};
-    if (name !== undefined) updatedFields.name = name.trim();
-    if (description !== undefined) updatedFields.description = description.trim();
+    if (cleanName !== undefined) updatedFields.name = cleanName;
+    if (cleanDescription !== undefined) updatedFields.description = cleanDescription;
     if (associatedCategories !== undefined) updatedFields.associatedCategories = associatedCategories;
-    if (primaryHelpline !== undefined) updatedFields.primaryHelpline = primaryHelpline.trim();
-    if (escalationHelpline !== undefined) updatedFields.escalationHelpline = escalationHelpline.trim();
-    if (officeAddress !== undefined) updatedFields.officeAddress = officeAddress.trim();
-    if (workingHours !== undefined) updatedFields.workingHours = workingHours.trim();
-    if (email !== undefined) updatedFields.email = email.trim();
-    if (website !== undefined) updatedFields.website = website.trim();
+    if (cleanPrimary !== undefined) updatedFields.primaryHelpline = cleanPrimary;
+    if (cleanEscalation !== undefined) updatedFields.escalationHelpline = cleanEscalation;
+    if (cleanAddress !== undefined) updatedFields.officeAddress = cleanAddress;
+    if (cleanWorkingHours !== undefined) updatedFields.workingHours = cleanWorkingHours;
+    if (cleanEmail !== undefined) updatedFields.email = cleanEmail;
+    if (cleanWebsite !== undefined) updatedFields.website = cleanWebsite;
     if (isEmergencyDepartment !== undefined) updatedFields.isEmergencyDepartment = !!isEmergencyDepartment;
     if (status !== undefined) updatedFields.status = status;
 

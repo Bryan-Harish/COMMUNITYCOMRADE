@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import { getAuthHeaders, getSession } from '../../utils/auth.js';
+import { isValidComment, sanitizeText } from '../../utils/validation.js';
 
 interface IssueDiscussionProps {
   issueId: string;
@@ -170,14 +171,19 @@ export default function IssueDiscussion({
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessageText.trim() && attachedImageUrls.length === 0) return;
-
-    setIsSending(true);
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    const cleanMsg = sanitizeText(newMessageText);
+    if (!isValidComment(cleanMsg)) {
+      setErrorMsg("Comment must be between 2 and 1000 characters long.");
+      return;
+    }
+
+    setIsSending(true);
+
     try {
-      let finalMsg = newMessageText.trim();
+      let finalMsg = cleanMsg;
       let msgType = 'CITIZEN_MESSAGE';
 
       if (isOfficialUpdate && (isOfficer || isAdmin)) {

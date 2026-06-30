@@ -96,11 +96,12 @@ export default function IssuesList({
       }
     }
 
-    const matchesSearch = 
-      issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.issueNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (issue.reporterName && issue.reporterName.toLowerCase().includes(searchQuery.toLowerCase()));
+    const cleanQuery = searchQuery.trim().toLowerCase();
+    const matchesSearch = !cleanQuery ||
+      issue.title.toLowerCase().includes(cleanQuery) ||
+      issue.issueNumber.toLowerCase().includes(cleanQuery) ||
+      issue.description.toLowerCase().includes(cleanQuery) ||
+      (issue.reporterName && issue.reporterName.toLowerCase().includes(cleanQuery));
 
     const matchesStatus = statusFilter === 'ALL' || issue.status === statusFilter;
     const matchesPriority = priorityFilter === 'ALL' || issue.priority === priorityFilter;
@@ -239,7 +240,8 @@ export default function IssuesList({
               type="text"
               placeholder="Search complaints, IDs, text..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value.slice(0, 100))}
+              maxLength={100}
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 text-slate-800"
             />
           </div>

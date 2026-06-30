@@ -1,5 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Landmark, ArrowLeft, Loader2, Upload, FileCheck, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { 
+  isValidName, 
+  isValidPhone, 
+  isValidEmail, 
+  isValidGovernmentId, 
+  sanitizeText 
+} from '../utils/validation.js';
 
 interface RegisterOfficerProps {
   onNavigate: (path: string) => void;
@@ -82,14 +89,56 @@ export default function RegisterOfficer({ onNavigate }: RegisterOfficerProps) {
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    // 1. Sanitize text inputs
+    const cleanFirstName = sanitizeText(firstName);
+    const cleanLastName = sanitizeText(lastName);
+    const cleanEmail = sanitizeText(email);
+    const cleanPhone = phoneNumber.replace(/\s+/g, ''); // strip spaces
+    const cleanEmployeeId = sanitizeText(employeeId);
+    const cleanDeptName = sanitizeText(departmentName);
+    const cleanWard = sanitizeText(assignedWard);
+    const cleanDistrict = sanitizeText(assignedDistrict);
+    const cleanState = sanitizeText(assignedState);
+
+    // 2. Perform validations
+    if (!isValidName(cleanFirstName)) {
+      setErrorMsg('Please enter a valid first name (2-100 characters, alphabets, spaces, periods, and hyphens only).');
+      return;
+    }
+
+    if (!isValidName(cleanLastName)) {
+      setErrorMsg('Please enter a valid last name (2-100 characters, alphabets, spaces, periods, and hyphens only).');
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+
+    if (!isValidPhone(cleanPhone)) {
+      setErrorMsg('Phone number must contain exactly 10 digits.');
+      return;
+    }
+
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
       setErrorMsg('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.');
       return;
     }
 
+    if (!isValidGovernmentId(cleanEmployeeId)) {
+      setErrorMsg('Please enter a valid Employee ID (alphanumeric, spaces, and hyphens only, no special character spam).');
+      return;
+    }
+
     if (!departmentIdCardImageUrl) {
       setErrorMsg('Please upload a copy of your Department ID Card.');
+      return;
+    }
+
+    if (!cleanDeptName || !cleanWard || !cleanDistrict || !cleanState) {
+      setErrorMsg('All department, ward, district, and state fields are required.');
       return;
     }
 
@@ -100,17 +149,17 @@ export default function RegisterOfficer({ onNavigate }: RegisterOfficerProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
+          firstName: cleanFirstName,
+          lastName: cleanLastName,
+          email: cleanEmail,
           password,
-          phoneNumber,
-          employeeId,
-          departmentName,
+          phoneNumber: cleanPhone,
+          employeeId: cleanEmployeeId,
+          departmentName: cleanDeptName,
           departmentIdCardImageUrl,
-          assignedWard,
-          assignedDistrict,
-          assignedState
+          assignedWard: cleanWard,
+          assignedDistrict: cleanDistrict,
+          assignedState: cleanState
         })
       });
 

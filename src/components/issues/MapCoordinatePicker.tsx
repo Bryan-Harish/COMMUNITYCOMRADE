@@ -18,6 +18,8 @@ interface MapCoordinatePickerProps {
   defaultLat: number;
   defaultLng: number;
   onConfirm: (lat: number, lng: number, address: string, district?: string, state?: string) => void;
+  title?: string;
+  subtitle?: string;
 }
 
 export default function MapCoordinatePicker({
@@ -28,6 +30,8 @@ export default function MapCoordinatePicker({
   defaultLat,
   defaultLng,
   onConfirm,
+  title = "Select Location",
+  subtitle = "Pinpoint or search for the exact coordinates",
 }: MapCoordinatePickerProps) {
   // Map center and picked location state
   const [pickedLocation, setPickedLocation] = useState<google.maps.LatLngLiteral | null>(null);
@@ -217,11 +221,57 @@ export default function MapCoordinatePicker({
       }
     };
 
-    const handleFinalGPSError = (error: GeolocationPositionError) => {
+    const tryIPGeolocation = async () => {
+      setErrorMsg("GPS signal unavailable. Trying IP-based network geolocation fallback...");
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.latitude && data.longitude) {
+            const coords = { lat: Number(data.latitude), lng: Number(data.longitude) };
+            setMapCenter(coords);
+            setPickedLocation(coords);
+            setMapZoom(14);
+            fetchAddress(coords.lat, coords.lng);
+            setErrorMsg(null);
+            setGpsLoading(false);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn("IP Geolocation 1 failed:", err);
+      }
+      
+      try {
+        const response = await fetch("https://ip-api.com/json/");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.lat && data.lon) {
+            const coords = { lat: Number(data.lat), lng: Number(data.lon) };
+            setMapCenter(coords);
+            setPickedLocation(coords);
+            setMapZoom(14);
+            fetchAddress(coords.lat, coords.lng);
+            setErrorMsg(null);
+            setGpsLoading(false);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn("IP Geolocation 2 failed:", err);
+      }
+      return false;
+    };
+
+    const handleFinalGPSError = async (error: GeolocationPositionError) => {
+      console.warn("Final HTML5 Geolocation failed. Trying network backup...");
+      const ipSuccess = await tryIPGeolocation();
+      if (ipSuccess) return;
+
       let customMsg = "Unable to automatically fetch your coordinates. Please click directly on the map to pin your location.";
       
       if (error.code === error.PERMISSION_DENIED) {
-        customMsg = "Location permission was denied. Try enabling location permissions in your browser or opening the application in a new tab (outside the iframe wrapper) to bypass iframe security sandbox policies.";
+        customMsg = "Location permission was denied by browser or iframe policy. Please click directly on the map, or open the app in a new tab.";
       } else if (error.code === error.TIMEOUT) {
         customMsg = "Location request timed out. Please click directly on the map to pin your location manually.";
       }
@@ -231,6 +281,16 @@ export default function MapCoordinatePicker({
     };
 
     navigator.geolocation.getCurrentPosition(successCallback, errorCallback, optionsHigh);
+  };
+
+  // Pin default test location (Bangalore center)
+  const pinDefaultTestLocation = () => {
+    const coords = { lat: defaultLat || 12.9716, lng: defaultLng || 77.5946 };
+    setMapCenter(coords);
+    setPickedLocation(coords);
+    setMapZoom(15);
+    fetchAddress(coords.lat, coords.lng);
+    setErrorMsg(null);
   };
 
   // Confirm selection and pass data back
@@ -256,8 +316,8 @@ export default function MapCoordinatePicker({
               <MapPin className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm tracking-wide">Select Complaint Location</h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Pinpoint the exact GPS coordinates on the interactive map</p>
+              <h3 className="font-bold text-sm tracking-wide">{title}</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>
             </div>
           </div>
           <button
@@ -375,10 +435,19 @@ export default function MapCoordinatePicker({
                 </APIProvider>
 
                 {errorMsg && (
-                  <div className="absolute top-3 left-3 right-3 bg-red-500 text-white text-[11px] font-semibold py-2 px-3 rounded-lg shadow-md flex items-center justify-between">
-                    <span>{errorMsg}</span>
-                    <button onClick={() => setErrorMsg(null)} className="hover:opacity-80">
-                      <X className="w-3.5 h-3.5" />
+                  <div className="absolute top-3 left-3 right-3 bg-red-500 text-white text-[11px] font-semibold py-2.5 px-4 rounded-xl shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-2.5 z-10 border border-red-400">
+                    <div className="flex flex-col gap-1 pr-2">
+                      <span>{errorMsg}</span>
+                      <button
+                        type="button"
+                        onClick={pinDefaultTestLocation}
+                        className="text-left font-bold underline hover:text-red-100 transition-colors flex items-center gap-1 mt-1 cursor-pointer"
+                      >
+                        ⚡ Use Sample Location for Testing
+                      </button>
+                    </div>
+                    <button onClick={() => setErrorMsg(null)} className="hover:opacity-80 shrink-0 self-end md:self-center cursor-pointer p-1">
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}
@@ -411,12 +480,7 @@ export default function MapCoordinatePicker({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-[10px] text-slate-400 flex items-center gap-1 font-sans">
-                    <Check className="w-3.5 h-3.5 text-teal-500" />
-                    Double click or pinch to zoom. Tap anywhere to move the pin.
-                  </p>
-
+                <div className="flex justify-end pt-1">
                   <div className="flex gap-2">
                     <button
                       type="button"

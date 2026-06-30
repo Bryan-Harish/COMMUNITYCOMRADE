@@ -594,21 +594,61 @@ export default function IssueDetails({ issueNumber, onBack, role }: IssueDetails
       return;
     }
 
+    const optionsHigh = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
+    const optionsLow = { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 };
+
+    const successCallback = (position: GeolocationPosition) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      setResLat(lat);
+      setResLng(lng);
+      setResAddress(`GPS Location Coords (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
+      setIsGpsLoading(false);
+    };
+
+    const tryIPGeolocation = async () => {
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.latitude && data.longitude) {
+            setResLat(Number(data.latitude));
+            setResLng(Number(data.longitude));
+            setResAddress(`IP-Based Location, ${data.city || 'Local Area'}`);
+            setIsGpsLoading(false);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn("IP Geolocation fallback 1 failed:", err);
+      }
+      return false;
+    };
+
+    const handleFinalGPSError = async (err: any) => {
+      console.warn("Final HTML5 Geolocation failed. Trying network backup...");
+      const ipSuccess = await tryIPGeolocation();
+      if (ipSuccess) return;
+
+      setErrorMsg(`GPS lookup failed (${err.message || 'unknown'}). Please grant location permissions, use a modern secure browser, or click "Simulate Proximity" above.`);
+      setIsGpsLoading(false);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        setResLat(lat);
-        setResLng(lng);
-        setResAddress(`GPS Location Coords (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
-        setIsGpsLoading(false);
-      },
+      successCallback,
       (error) => {
-        console.warn("GPS lookup failed, using fallback:", error);
-        setErrorMsg("GPS lookup failed. Please grant location permissions or use the simulator.");
-        setIsGpsLoading(false);
+        console.warn("GPS lookup (high accuracy) failed:", error.message, "code:", error.code);
+        if (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE) {
+          navigator.geolocation.getCurrentPosition(
+            successCallback,
+            handleFinalGPSError,
+            optionsLow
+          );
+        } else {
+          handleFinalGPSError(error);
+        }
       },
-      { enableHighAccuracy: true, timeout: 5000 }
+      optionsHigh
     );
   };
 

@@ -130,7 +130,8 @@ export default function DepartmentDirectoryPage({
               type="text"
               placeholder="Search departments by name, services, keywords..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value.slice(0, 100))}
+              maxLength={100}
               className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm transition-all"
             />
           </div>

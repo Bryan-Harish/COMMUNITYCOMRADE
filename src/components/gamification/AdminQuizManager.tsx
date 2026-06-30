@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../../utils/auth.js';
 import { PlusCircle, RefreshCw, Power, AlertTriangle, Loader2 } from 'lucide-react';
+import { isValidQuizCategoryName, sanitizeText } from '../../utils/validation.js';
 
 export default function AdminQuizManager() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -9,6 +10,7 @@ export default function AdminQuizManager() {
   const [catName, setCatName] = useState('');
   const [catDesc, setCatDesc] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -36,20 +38,39 @@ export default function AdminQuizManager() {
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
+
+    const cleanName = sanitizeText(catName);
+    const cleanDesc = sanitizeText(catDesc);
+
+    if (!isValidQuizCategoryName(cleanName)) {
+      setErrorMsg('Category name is required and cannot exceed 100 characters.');
+      return;
+    }
+
+    if (!cleanDesc) {
+      setErrorMsg('Category description is required.');
+      return;
+    }
+
     try {
       const res = await fetch('/api/gamification/admin/categories', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ name: catName, description: catDesc })
+        body: JSON.stringify({ name: cleanName, description: cleanDesc })
       });
       if (res.ok) {
         setShowCategoryForm(false);
         setCatName('');
         setCatDesc('');
         fetchData();
+      } else {
+        const errorData = await res.json();
+        setErrorMsg(errorData.error || 'Failed to create category.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setErrorMsg(e.message || 'An error occurred during category creation.');
     }
   };
 
@@ -104,6 +125,12 @@ export default function AdminQuizManager() {
 
         {showCategoryForm && (
           <form onSubmit={handleCreateCategory} className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            {errorMsg && (
+              <div className="mb-4 p-3 bg-rose-50 border-l-4 border-rose-500 text-rose-800 text-xs rounded-r-lg flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-semibold mb-1">Name</label>
@@ -115,7 +142,7 @@ export default function AdminQuizManager() {
               </div>
             </div>
             <div className="mt-4 flex gap-2 justify-end">
-              <button type="button" onClick={()=>setShowCategoryForm(false)} className="px-4 py-2 text-sm text-slate-600 font-semibold">Cancel</button>
+              <button type="button" onClick={()=>{setShowCategoryForm(false); setErrorMsg(null);}} className="px-4 py-2 text-sm text-slate-600 font-semibold">Cancel</button>
               <button type="submit" className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg font-semibold">Create & Auto-Generate Questions</button>
             </div>
           </form>
