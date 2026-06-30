@@ -113,30 +113,51 @@ async function getMediaInlineData(url: string, type: 'IMAGE' | 'VIDEO') {
       localPath = path.join(process.cwd(), "public/uploads", parts[1]);
     }
     
-    if (localPath && fs.existsSync(localPath)) {
-      const data = fs.readFileSync(localPath);
-      const ext = path.extname(localPath).toLowerCase();
-      let mimeType = ext === ".png" ? "image/png" : "image/jpeg";
-      return {
-        inlineData: {
-          data: data.toString("base64"),
-          mimeType: mimeType
-        }
-      };
-    } else if (url.startsWith("http://") || url.startsWith("https://")) {
-      const res = await fetch(url);
-      if (res.ok) {
-        const arrayBuffer = await res.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const parsedUrl = new URL(url);
-        const ext = path.extname(parsedUrl.pathname).toLowerCase();
+    if (localPath) {
+      if (fs.existsSync(localPath)) {
+        const data = fs.readFileSync(localPath);
+        const ext = path.extname(localPath).toLowerCase();
         let mimeType = ext === ".png" ? "image/png" : "image/jpeg";
         return {
           inlineData: {
-            data: buffer.toString("base64"),
+            data: data.toString("base64"),
             mimeType: mimeType
           }
         };
+      } else {
+        // If identified as a local upload but missing on disk, return null immediately.
+        // Doing this avoids loopback deadlocks, 504 gateway timeouts, or SVG parsing errors.
+        console.warn(`Local upload file not found on disk: ${localPath}. Skipping fetch.`);
+        return null;
+      }
+    } else if (url.startsWith("http://") || url.startsWith("https://")) {
+      // Add a safe timeout of 8 seconds to prevent hanging on slow/dead external URLs
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("svg") || contentType.includes("html") || contentType.includes("xml")) {
+            console.warn(`Skipping fetch for URL ${url} due to unsupported content-type: ${contentType}`);
+            return null;
+          }
+          const arrayBuffer = await res.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const parsedUrl = new URL(url);
+          const ext = path.extname(parsedUrl.pathname).toLowerCase();
+          let mimeType = ext === ".png" ? "image/png" : "image/jpeg";
+          return {
+            inlineData: {
+              data: buffer.toString("base64"),
+              mimeType: mimeType
+            }
+          };
+        }
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        console.error(`Fetch request aborted or failed for URL ${url}:`, fetchErr.message);
       }
     }
   } catch (err) {
