@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DbService } from "../../db/db.js";
+import { retryWithBackoffAndModelFallback } from "./gemini.js";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -58,9 +59,11 @@ export async function generateAIPredictiveInsights(currentUser?: any): Promise<A
   }
 
   try {
-    // 1. Gather stats for context construction
-    const issues = await DbService.getIssues({});
-    const users = await DbService.getAllUsersList();
+    // 1. Gather stats for context construction in parallel to avoid sequential blocking
+    const [issues, users] = await Promise.all([
+      DbService.getIssues({}),
+      DbService.getAllUsersList()
+    ]);
 
     // Group issues by ward
     const wardGroups: Record<string, any[]> = {};
@@ -143,92 +146,79 @@ export async function generateAIPredictiveInsights(currentUser?: any): Promise<A
       You must return structured JSON output conforming exactly to the responseSchema.
     `;
 
-    // Resilient fallback models
-    const MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
-    let responseText = "";
-
-    for (const modelName of MODELS) {
-      try {
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                recurringIssues: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      title: { type: Type.STRING },
-                      coordinates: {
-                        type: Type.ARRAY,
-                        items: { type: Type.NUMBER }
-                      },
-                      count: { type: Type.NUMBER },
-                      severity: { type: Type.STRING },
-                      recommendation: { type: Type.STRING }
+    // Leverage our centralized retry/fallback system with backoff and fast-failover on rate limits
+    const responseText = await retryWithBackoffAndModelFallback(async (modelName) => {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              recurringIssues: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    coordinates: {
+                      type: Type.ARRAY,
+                      items: { type: Type.NUMBER }
                     },
-                    required: ["title", "coordinates", "count", "severity", "recommendation"]
-                  }
-                },
-                predictedHotspots: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      ward: { type: Type.STRING },
-                      riskFactor: { type: Type.NUMBER },
-                      cause: { type: Type.STRING },
-                      preventativeAction: { type: Type.STRING }
-                    },
-                    required: ["ward", "riskFactor", "cause", "preventativeAction"]
-                  }
-                },
-                workloadBottlenecks: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      department: { type: Type.STRING },
-                      activeQueue: { type: Type.NUMBER },
-                      slaBreachRate: { type: Type.STRING },
-                      analysis: { type: Type.STRING }
-                    },
-                    required: ["department", "activeQueue", "slaBreachRate", "analysis"]
-                  }
-                },
-                criticalRisks: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      issueNumber: { type: Type.STRING },
-                      description: { type: Type.STRING },
-                      hazardType: { type: Type.STRING },
-                      urgency: { type: Type.STRING }
-                    },
-                    required: ["issueNumber", "description", "hazardType", "urgency"]
-                  }
+                    count: { type: Type.NUMBER },
+                    severity: { type: Type.STRING },
+                    recommendation: { type: Type.STRING }
+                  },
+                  required: ["title", "coordinates", "count", "severity", "recommendation"]
                 }
               },
-              required: ["recurringIssues", "predictedHotspots", "workloadBottlenecks", "criticalRisks"]
-            }
+              predictedHotspots: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    ward: { type: Type.STRING },
+                    riskFactor: { type: Type.NUMBER },
+                    cause: { type: Type.STRING },
+                    preventativeAction: { type: Type.STRING }
+                  },
+                  required: ["ward", "riskFactor", "cause", "preventativeAction"]
+                }
+              },
+              workloadBottlenecks: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    department: { type: Type.STRING },
+                    activeQueue: { type: Type.NUMBER },
+                    slaBreachRate: { type: Type.STRING },
+                    analysis: { type: Type.STRING }
+                  },
+                  required: ["department", "activeQueue", "slaBreachRate", "analysis"]
+                }
+              },
+              criticalRisks: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    issueNumber: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    hazardType: { type: Type.STRING },
+                    urgency: { type: Type.STRING }
+                  },
+                  required: ["issueNumber", "description", "hazardType", "urgency"]
+                }
+              }
+            },
+            required: ["recurringIssues", "predictedHotspots", "workloadBottlenecks", "criticalRisks"]
           }
-        });
-        
-        responseText = response.text!;
-        break;
-      } catch (err) {
-        console.warn(`AI Insights failed with model ${modelName}, trying next fallback:`, err);
-      }
-    }
-
-    if (!responseText) {
-      throw new Error("All Gemini models failed to generate Insights.");
-    }
+        }
+      });
+      return response.text!;
+    });
 
     const report: AIPredictiveInsightReport = JSON.parse(responseText);
     
