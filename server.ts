@@ -2469,11 +2469,6 @@ app.post('/api/issues/:issueNumber/verify', authenticateToken, async (req: any, 
       updateFields.status = 'COMMUNITY_VERIFIED';
       updateFields.communityVerifiedAt = new Date();
 
-      // Award +50 points to the resolving officer!
-      if (issue.assignedOfficerId) {
-        await DbService.awardPoints(issue.assignedOfficerId, 50);
-      }
-
       // Award consensus bonus +10 points to all APPROVE voters
       const verifications = await DbService.getResolutionVerifications(issue.id || issue._id);
       for (const v of verifications) {
@@ -2588,6 +2583,11 @@ app.post('/api/admin/issues/:issueNumber/close', authenticateToken, authorizeRol
     };
 
     const updatedIssue = await DbService.updateIssue(issue.issueNumber, updateFields);
+
+    // Award +50 points to the resolving officer upon Admin closing!
+    if (issue.assignedOfficerId) {
+      await DbService.awardPoints(issue.assignedOfficerId, 50);
+    }
 
     await DbService.createIssueAudit({
       issueId: issue.issueNumber,
