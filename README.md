@@ -470,6 +470,76 @@ Below are the main wireframe and interface components represented in the applica
 #### Helpline
 ![Helpline](screenshots/citizen/citizen-helpline.png)
 
+### Officer
+
+#### Registration
+![Registration Page](screenshots/officer/officer_registration.png)
+
+#### Dashboard
+![Dashboard](screenshots/officer/officer-dashboard.png)
+
+#### Complaints Worklist
+![Complaints Worklist](screenshots/officer/officer-complaint-worklist.png)
+
+#### View Complaint
+![View Complaint](screenshots/officer/officer-complaint-view.png)
+
+#### Profile
+![Profile](screenshots/officer/officer-profile.png)
+
+#### Analytics Overview
+![Analytics Overview](screenshots/officer/officer-analytics-overview.png)
+
+#### Analytics HeatMap
+![Analytics HeatMap](screenshots/officer/officer-analytics-heatmap.png)
+
+#### Analytics Insights
+![Analytics Insights](screenshots/officer/officer-analytics-ai-insights.png)
+
+#### LeaderBoard
+![LeaderBoard Monthly](screenshots/officer/officer-leaderboard.png)
+
+#### Helpline
+![Helpline](screenshots/officer/officer-helpline.png)
+
+### Admin
+
+#### Dashboard
+![Dashboard](screenshots/admin/admin-dashboard.png)
+
+#### Complaints
+![Complaints](screenshots/admin/admin-complaint-list.png)
+
+#### Edit Complaint
+![Edit Complaint](screenshots/admin/admin-complaint-edit.png)
+
+#### User Registry
+![User Registry](screenshots/admin/admin-user-registry.png)
+
+#### Manual Review
+![Manual Review](screenshots/admin/admin-manual-review.png)
+
+#### Officer Approval
+![Officer Approval](screenshots/admin/officer-approval.png)
+
+#### Analytics Overview
+![Analytics Overview](screenshots/admin/admin-analytics-overview.png)
+
+#### Analytics HeatMap
+![Analytics HeatMap](screenshots/admin/admin-analytics-heatmap.png)
+
+#### Analytics Insights
+![Analytics Insights](screenshots/admin/admin-analytics-ai-insights.png)
+
+#### Quiz Menu
+![Quiz Menu](screenshots/admin/admin-quizz.png)
+
+#### Helpline View
+![Helpline View](screenshots/admin/admin-helpline-view.png)
+
+#### Helpline Edit
+![Helpline Edit](screenshots/admin/admin-helpline-edit.png)
+
 
 ---
 
