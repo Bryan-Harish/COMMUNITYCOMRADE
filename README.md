@@ -408,7 +408,17 @@ npm run start
 Below are the main wireframe and interface components represented in the application:
 
 ### Home Page
-`[ Landing page layout with core features, impact stats, and quick links to Login / Register ]`
+![Landing Page](screenshots/home/MainPage.png)
+![Landing Page](screenshots/home/MainPage2.png)
+
+### Login Page
+![Landing Page](screenshots/home/loginPage.png)
+
+### Citizen
+
+#### Registration
+![Landing Page](screenshots/citizen/citizen_registration.png)
+
 
 ### Issue Reporting
 `[ Map coordinate picker pin + image drag-and-drop file uploader + Gemini categorization review ]`
