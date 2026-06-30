@@ -49,7 +49,7 @@ export default function OfficerLeaderboard() {
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Same Ward
+            Ward
           </button>
           <button
             onClick={() => setActiveTab('district')}
@@ -59,7 +59,7 @@ export default function OfficerLeaderboard() {
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Same District
+            District
           </button>
           <button
             onClick={() => setActiveTab('state')}
@@ -69,7 +69,7 @@ export default function OfficerLeaderboard() {
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            Same State
+            State
           </button>
         </div>
       </div>

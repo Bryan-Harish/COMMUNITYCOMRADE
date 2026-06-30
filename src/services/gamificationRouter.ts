@@ -499,12 +499,25 @@ gamificationRouter.get('/leaderboard/officers', async (req: any, res: any) => {
     const scope = req.query.scope || 'ward'; // 'ward', 'district', 'state'
     let filter: any = { role: 'DEPARTMENT_OFFICER', status: 'ACTIVE_OFFICER' };
 
+    const makeLocalityRegex = (val: string) => {
+      const cleaned = String(val || '').trim().replace(/\s+/g, '');
+      if (!cleaned) return /^$/i;
+      const pattern = '^' + cleaned.split('').map(char => {
+        const esc = char.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        return esc;
+      }).join('\\s*') + '$';
+      return new RegExp(pattern, 'i');
+    };
+
     if (scope === 'ward') {
-      filter.registeredWard = currentUser.registeredWard;
+      filter.registeredWard = makeLocalityRegex(currentUser.registeredWard);
+      filter.registeredDistrict = makeLocalityRegex(currentUser.registeredDistrict);
+      filter.registeredState = makeLocalityRegex(currentUser.registeredState);
     } else if (scope === 'district') {
-      filter.registeredDistrict = currentUser.registeredDistrict;
+      filter.registeredDistrict = makeLocalityRegex(currentUser.registeredDistrict);
+      filter.registeredState = makeLocalityRegex(currentUser.registeredState);
     } else if (scope === 'state') {
-      filter.registeredState = currentUser.registeredState;
+      filter.registeredState = makeLocalityRegex(currentUser.registeredState);
     }
 
     const officers = await UserModel.find(filter);
@@ -547,7 +560,9 @@ gamificationRouter.get('/leaderboard/officers', async (req: any, res: any) => {
       return b.impactScore - a.impactScore;
     });
 
-    res.json({ success: true, data });
+    const top5 = data.slice(0, 5);
+
+    res.json({ success: true, data: top5 });
   } catch (err: any) {
     console.error('Error fetching officer leaderboard:', err);
     res.status(500).json({ success: false, error: err.message });
