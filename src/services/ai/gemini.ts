@@ -316,11 +316,12 @@ Candidate #${idx + 1}:
         If no duplicate is detected, set duplicateDetected to false, duplicateConfidence to 0, existingIssueId to null, and explain why.
     `;
 
-    // Extract any images/media of the new issue
+    // Extract any images/media of the new issue in parallel to reduce latency
     const contents: any[] = [prompt];
     if (newIssue.media && Array.isArray(newIssue.media)) {
-        for (const item of newIssue.media) {
-            const inlineData = await getMediaInlineData(item.url, item.type);
+        const mediaPromises = newIssue.media.map((item: any) => getMediaInlineData(item.url, item.type));
+        const resolvedMedia = await Promise.all(mediaPromises);
+        for (const inlineData of resolvedMedia) {
             if (inlineData) {
                 contents.push(inlineData);
             }

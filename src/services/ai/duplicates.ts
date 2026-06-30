@@ -61,6 +61,11 @@ export async function checkDuplicates(issue: any): Promise<any> {
     // Exclude the issue itself if it's already saved (e.g. on updates, though we analyze prior to save)
     candidateIssues = candidateIssues.filter((c: any) => c.issueNumber !== issue.issueNumber && c.id !== issue.id);
 
+    // Limit candidates to top 5 most recent/relevant to keep prompt lightweight and API calls fast
+    if (candidateIssues.length > 5) {
+        candidateIssues = candidateIssues.slice(0, 5);
+    }
+
     if (candidateIssues.length === 0) {
         return { duplicateDetected: false, duplicateConfidence: 0, existingIssueId: null, reason: 'No nearby issues found within 200 meters.' };
     }
