@@ -84,30 +84,14 @@ export default function CitizenDashboard({
           u.role === 'CITIZEN'
         );
 
-        // Helper to calculate Euclidean coordinate distance
-        const getCoordDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-          return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lng1 - lng2, 2));
-        };
+        const cleanStr = (s: string) => (s || '').toLowerCase().trim();
 
-        // Attempt exact ward matching first
+        // Show citizens belonging to same ward, district, and state
         let neighbors = otherCitizens.filter((u: any) => 
-          u.registeredWard?.toLowerCase() === activeUser.registeredWard?.toLowerCase() &&
-          u.registeredDistrict?.toLowerCase() === activeUser.registeredDistrict?.toLowerCase()
+          cleanStr(u.registeredWard) === cleanStr(activeUser.registeredWard) &&
+          cleanStr(u.registeredDistrict) === cleanStr(activeUser.registeredDistrict) &&
+          cleanStr(u.registeredState) === cleanStr(activeUser.registeredState)
         );
-
-        // Fallback: If no citizens exist in the exact ward/district, sort all citizens by coordinate proximity!
-        if (neighbors.length === 0) {
-          otherCitizens = otherCitizens.map((u: any) => {
-            const dist = (activeUser.latitude && activeUser.longitude && u.latitude && u.longitude)
-              ? getCoordDistance(activeUser.latitude, activeUser.longitude, u.latitude, u.longitude)
-              : 999999;
-            return { ...u, proximityDistance: dist };
-          });
-          
-          otherCitizens.sort((a: any, b: any) => (a.proximityDistance || 0) - (b.proximityDistance || 0));
-          // Take top 5 nearest neighbors
-          neighbors = otherCitizens.slice(0, 5);
-        }
 
         setCitizens(neighbors);
       }

@@ -585,11 +585,13 @@ app.post('/api/community/endorse', authenticateToken, async (req: any, res: any)
       });
     }
 
-    // Same locality check (same district and ward)
+    // Same locality check (same district, ward, and state)
     const endorserDistrict = (endorser.registeredDistrict || '').toLowerCase().trim();
     const endorseeDistrict = (endorsee.registeredDistrict || '').toLowerCase().trim();
     const endorserWard = (endorser.registeredWard || '').toLowerCase().trim();
     const endorseeWard = (endorsee.registeredWard || '').toLowerCase().trim();
+    const endorserState = (endorser.registeredState || '').toLowerCase().trim();
+    const endorseeState = (endorsee.registeredState || '').toLowerCase().trim();
 
     console.log('DEBUG ENDORSEMENT:', { 
         endorserId, 
@@ -597,13 +599,15 @@ app.post('/api/community/endorse', authenticateToken, async (req: any, res: any)
         endorserDistrict, 
         endorseeDistrict, 
         endorserWard, 
-        endorseeWard 
+        endorseeWard,
+        endorserState,
+        endorseeState
     });
 
-    if (endorserDistrict !== endorseeDistrict || endorserWard !== endorseeWard) {
+    if (endorserDistrict !== endorseeDistrict || endorserWard !== endorseeWard || endorserState !== endorseeState) {
       return res.status(400).json({
         success: false,
-        error: { code: 'LOCALITY_MISMATCH', message: 'Endorsements are limited to residents of the same Ward and District.' }
+        error: { code: 'LOCALITY_MISMATCH', message: 'Endorsements are limited to residents of the same Ward, District, and State.' }
       });
     }
 
