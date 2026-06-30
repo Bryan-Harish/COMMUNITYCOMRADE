@@ -412,28 +412,64 @@ Below are the main wireframe and interface components represented in the applica
 ![Landing Page](screenshots/home/MainPage2.png)
 
 ### Login Page
-![Landing Page](screenshots/home/loginPage.png)
+![Login Page](screenshots/home/loginPage.png)
 
 ### Citizen
 
 #### Registration
-![Landing Page](screenshots/citizen/citizen_registration.png)
+![Registration Page](screenshots/citizen/citizen_registration.png)
 
+#### Dashboard
+![Dashboard](screenshots/citizen/citizen_dashboard.png)
 
-### Issue Reporting
-`[ Map coordinate picker pin + image drag-and-drop file uploader + Gemini categorization review ]`
+#### Complaints
+![Complaints](screenshots/citizen/citizen_complaints.png)
 
-### Officer Dashboard
-`[ Active geofenced tasks list + SLA ticking countdown clocks + "Before" image overview ]`
+#### View Complaint
+![View Complaint](screenshots/citizen/citizen_complaint_view.png)
 
-### Analytics Dashboard
-`[ Live density heatmaps + SLA compliance statistics + Gemini predictive hotspot forecasts ]`
+#### Profile
+![Profile](screenshots/citizen/citizen-profile.png)
 
-### Civic Learning
-`[ Staggered quiz categories list + interactive Gemini trivia card + answer review animations ]`
+#### Create Complaint
+![Create Complaint](screenshots/citizen/complaint_register_page.png)
 
-### Community Hero
-`[ Hall of Fame monthly hero card + global & local leaderboards with custom avatar badges ]`
+#### Location Select Pop-up
+![Location Select Pop-up](screenshots/citizen/location_selection_popup.png)
+
+#### Analytics Overview
+![Analytics Overview](screenshots/citizen/citizen_analytics_overview.png)
+
+#### Analytics HeatMap
+![Analytics HeatMap](screenshots/citizen/citizen_analytics_heatmap.png)
+
+#### Analytics Insights
+![Analytics Insights](screenshots/citizen/citizen-analytics-ai-insights.png)
+
+#### Quiz Menu
+![Quiz Menu](screenshots/citizen/citizen-quiz-menu.png)
+
+#### Quiz Attempt
+![Quiz Attempt](screenshots/citizen/citizen-quiz-page.png)
+
+#### Quiz Quit
+![Quiz Quit](screenshots/citizen/citizen-quiz-quit.png)
+
+#### Quiz Complete
+![Quiz Complete](screenshots/citizen/citizen-quiz-complete.png)
+
+#### LeaderBoard Monthly
+![LeaderBoard Monthly](screenshots/citizen/citizen-leaderboard-monthly.png)
+
+#### LeaderBoard Lifetime
+![LeaderBoard Lifetime](screenshots/citizen/citizen-leaderboard-lifetime.png)
+
+#### LeaderBoard Hall-of-fame
+![LeaderBoard Hall-of-fame](screenshots/citizen/citizen-leaderboard-hall-of-fame.png)
+
+#### Helpline
+![Helpline](screenshots/citizen/citizen-helpline.png)
+
 
 ---
 
