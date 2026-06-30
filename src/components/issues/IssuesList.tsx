@@ -254,11 +254,15 @@ export default function IssuesList({
             >
               <option value="ALL">All Statuses</option>
               <option value="OPEN">Open</option>
+              <option value="ASSIGNED">Assigned</option>
+              <option value="ACCEPTED">Accepted</option>
               <option value="IN_PROGRESS">In Progress</option>
               <option value="RESOLUTION_PENDING_VERIFICATION">Pending Verification</option>
               <option value="COMMUNITY_VERIFIED">Community Verified</option>
               <option value="REOPENED">Reopened</option>
               <option value="CLOSED">Closed</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="MANUAL_REVIEW">Manual Review</option>
             </select>
           </div>
 

@@ -4,13 +4,13 @@ import * as DuplicateService from './duplicates.js';
 
 export async function processIssueAnalysis(issue: any): Promise<any> {
     try {
-        // Step 1: Perform main Gemini Analysis
-        const analysis = await GeminiService.analyzeIssue(issue);
+        // Run main Gemini Analysis and Duplicate Detection in parallel to significantly reduce latency
+        const [analysis, duplicateResult] = await Promise.all([
+            GeminiService.analyzeIssue(issue),
+            DuplicateService.checkDuplicates(issue)
+        ]);
         
-        // Step 2: Perform Duplicate Detection
-        const duplicateResult = await DuplicateService.checkDuplicates(issue);
-        
-        // Step 3: Check Public Property Rule
+        // Check Public Property Rule
         let aiAnalysisStatus = 'COMPLETED';
         if (analysis.isPublicProperty === false) {
             aiAnalysisStatus = 'MANUAL_REVIEW';

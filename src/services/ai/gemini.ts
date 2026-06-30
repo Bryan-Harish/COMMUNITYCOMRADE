@@ -16,8 +16,8 @@ const MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
 
 export async function retryWithBackoffAndModelFallback<T>(
   fn: (modelName: string) => Promise<T>,
-  retries = 3,
-  delay = 1000
+  retries = 2,
+  delay = 400
 ): Promise<T> {
   let lastError: any = null;
   
@@ -71,6 +71,16 @@ export async function retryWithBackoffAndModelFallback<T>(
                                      errorMessage.includes('daily limit');
         if (isDailyQuotaExceeded) {
           console.warn(`Daily quota limit exceeded for model ${modelName}. Switching to next model immediately...`);
+          break;
+        }
+
+        // Fast-fail if it is a rate limit or resource exhaustion (immediate switch to fallback model instead of waiting/retrying)
+        const isRateLimited = errorMessage.includes('rate_limit') || 
+                              errorMessage.includes('429') || 
+                              errorMessage.includes('resource_exhausted') ||
+                              errorMessage.includes('limit exceeded');
+        if (isRateLimited) {
+          console.warn(`Rate limit or resource exhaustion hit for model ${modelName}. Switching to next model immediately...`);
           break;
         }
         
@@ -191,11 +201,12 @@ export async function analyzeIssue(issueData: any): Promise<any> {
         Return confidence scores between 0.0 and 1.0 for each decision.
     `;
 
-    // Extract any images/media
+    // Extract any images/media in parallel
     const contents: any[] = [prompt];
     if (issueData.media && Array.isArray(issueData.media)) {
-        for (const item of issueData.media) {
-            const inlineData = await getMediaInlineData(item.url, item.type);
+        const mediaPromises = issueData.media.map((item: any) => getMediaInlineData(item.url, item.type));
+        const resolvedMedia = await Promise.all(mediaPromises);
+        for (const inlineData of resolvedMedia) {
             if (inlineData) {
                 contents.push(inlineData);
             }
