@@ -171,7 +171,7 @@ Status: COMMUNITY_VERIFIED_CITIZEN (Tier 2) [UNLOCKED]
                                              Status: IN_PROGRESS
                                                        │
                                                        ▼
-                                        [ Officer Uploads "After" Photo ]
+                                         [ Officer Uploads "After" Photo ]
                                                        │
                                                        ▼
                                          [ Double-Gated AI Verification ]
@@ -180,7 +180,7 @@ Status: COMMUNITY_VERIFIED_CITIZEN (Tier 2) [UNLOCKED]
                                             - Watermark fraud check
                                                        │
                                                        ▼
-                                    Status: RESOLUTION_PENDING_VERIFICATION
+                                     Status: RESOLUTION_PENDING_VERIFICATION
                                                        │
                        ┌───────────────────────────────┴───────────────────────────────┐
                        ▼                                                               ▼

@@ -279,6 +279,25 @@ Cognitive processing logic resides entirely inside server-side controllers, leve
 *   **Prompt Architecture:** Compares a newly submitted issue against open neighboring issues within 200 meters.
 *   **Duplicate Filtering:** Compares both description texts and photos. If a match is detected, it returns `duplicateDetected: true` and the corresponding existing issue ID, prompting the frontend to redirect the user to upvote the existing issue.
 
+### 7.3 Submit Complaint Workflow Performance Optimizations
+To ensure rapid user feedback and highly responsive submission times under heavy civic load, the following high-performance architectural optimizations were implemented in the submission flow:
+
+1.  **Multi-Model Parallel Execution Pipelines:**
+    *   Instead of executing tasks sequentially, the backend runs the main issue analysis (`analyzeIssue`) and the semantic geo-duplication check (`compareWithCandidates`) concurrently in parallel threads using `Promise.all`.
+    *   This halves the aggregate waiting time, ensuring both cognitive tasks complete in a single round-trip.
+
+2.  **Intellectual Model Tiering & Cost-Performance Routing:**
+    *   **Core Issue Analysis:** Handled by `gemini-3.5-flash` to leverage its high-fidelity reasoning for private vs. public property vetting.
+    *   **Semantic Duplicate Verification:** Routed primarily to the ultra-fast and cost-effective `gemini-3.1-flash-lite` model, falling back automatically to `gemini-3.5-flash` only if the primary quota is reached. This optimizes token usage, minimizes API latency, and preserves higher-tier quota.
+
+3.  **Parallel Asset & Media Inline Extraction:**
+    *   Replaced serial sequential loading of image/video attachments with fully asynchronous, non-blocking operations.
+    *   Inline base64 media extraction routines are executed concurrently using `Promise.all` during duplicate prompt construction, removing sequential latency bottlenecks during file conversions.
+
+4.  **Lightweight Context Gating (Candidate-Set Optimization):**
+    *   Filters neighboring spatial search coordinates to retrieve only the top 5 most recent and relevant candidate issues within the 200-meter range.
+    *   This caps the context window of the prompt, ensuring the model parses lightweight payloads and responds with minimal latency.
+
 ---
 
 ## SECTION 8: GOOGLE MAPS ARCHITECTURE
