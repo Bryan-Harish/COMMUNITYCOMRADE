@@ -17,11 +17,13 @@ const MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
 export async function retryWithBackoffAndModelFallback<T>(
   fn: (modelName: string) => Promise<T>,
   retries = 2,
-  delay = 400
+  delay = 400,
+  customModels?: string[]
 ): Promise<T> {
   let lastError: any = null;
+  const modelsToUse = customModels && customModels.length > 0 ? customModels : MODELS;
   
-  for (const modelName of MODELS) {
+  for (const modelName of modelsToUse) {
     let attempts = retries;
     let currentDelay = delay;
     
@@ -344,7 +346,7 @@ Candidate #${idx + 1}:
                 required: ["duplicateDetected", "duplicateConfidence", "existingIssueId", "reason"],
             },
         },
-    }));
+    }), 2, 400, ["gemini-3.1-flash-lite", "gemini-3.5-flash"]);
 
     return JSON.parse(response.text!);
 }
